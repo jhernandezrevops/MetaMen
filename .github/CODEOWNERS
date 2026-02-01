@@ -1,0 +1,26 @@
+# METAMEN100 - Code Owners
+# Define quién es responsable de revisar cada parte del código
+
+# Default owners - revisan todo el código
+* @jhernandezrevops
+
+# Infraestructura y CI/CD
+/.github/ @jhernandezrevops
+.husky/ @jhernandezrevops
+*.config.* @jhernandezrevops
+
+# Documentación
+/docs/ @jhernandezrevops
+*.md @jhernandezrevops
+
+# Core de la aplicación
+/src/app/ @jhernandezrevops
+/src/components/ @jhernandezrevops
+/src/lib/ @jhernandezrevops
+
+# Base de datos y server actions
+/src/actions/ @jhernandezrevops
+/supabase/ @jhernandezrevops
+
+# Tests
+/tests/ @jhernandezrevops

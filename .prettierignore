@@ -1,6 +1,10 @@
 # Dependencies
 node_modules/
 
+# Agent templates and prompts
+.agents/
+prompts/
+
 # Build outputs
 .next/
 out/

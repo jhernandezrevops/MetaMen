@@ -1,0 +1,59 @@
+# METAMEN100 - Dependabot Configuration
+# Mantiene dependencias actualizadas automáticamente
+
+version: 2
+updates:
+  # npm dependencies
+  - package-ecosystem: 'npm'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+      day: 'monday'
+      time: '09:00'
+      timezone: 'America/Mexico_City'
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: 'deps'
+      include: 'scope'
+    labels:
+      - 'dependencies'
+      - 'automated'
+    groups:
+      # Agrupar actualizaciones de desarrollo
+      dev-dependencies:
+        dependency-type: 'development'
+        update-types:
+          - 'minor'
+          - 'patch'
+      # Agrupar actualizaciones de ESLint
+      eslint:
+        patterns:
+          - 'eslint*'
+          - '@typescript-eslint/*'
+      # Agrupar actualizaciones de testing
+      testing:
+        patterns:
+          - 'vitest'
+          - '@vitest/*'
+          - '@testing-library/*'
+          - 'playwright'
+          - '@playwright/*'
+    ignore:
+      # Ignorar Next.js major updates (requieren revisión manual)
+      - dependency-name: 'next'
+        update-types: ['version-update:semver-major']
+      # Ignorar React major updates
+      - dependency-name: 'react*'
+        update-types: ['version-update:semver-major']
+
+  # GitHub Actions
+  - package-ecosystem: 'github-actions'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+      day: 'monday'
+    commit-message:
+      prefix: 'ci'
+    labels:
+      - 'ci/cd'
+      - 'automated'
