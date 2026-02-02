@@ -3,6 +3,7 @@ node_modules/
 
 # Agent templates and prompts
 .agents/
+.agent/
 prompts/
 
 # Build outputs
