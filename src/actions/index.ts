@@ -8,9 +8,22 @@ export { success, error, validateInput, handleError, ErrorCodes } from './utils'
 export type { ActionResult } from './utils';
 
 // Tasks
-export { getTaskDefinitions, getTodayTasks, completeTask, isTaskCompletedToday } from './tasks';
+export { completeTask } from './tasks/complete-task';
+export { getTodayTasks } from './tasks/get-today-tasks';
 
-// Avatar
+// Store
+export { purchaseItem } from './store/purchase-item';
+
+// Inventory
+export { equipItem } from './inventory/equip-item';
+
+// Profile
+export { getProfile } from './profile/get-profile';
+
+// Payments
+export { createCheckout } from './payments/create-checkout';
+
+// Legacy exports (mantener compatibilidad)
 export {
   getCurrentAvatar,
   createAvatar,
@@ -19,5 +32,6 @@ export {
   getAvatarStats,
 } from './avatar';
 
-// Shop
-export { getShopItems, getInventory, purchaseItem, toggleEquipItem } from './shop';
+export { getShopItems, getInventory, toggleEquipItem } from './shop';
+
+export { getTaskDefinitions, isTaskCompletedToday } from './tasks';
