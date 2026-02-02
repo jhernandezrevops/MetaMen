@@ -15,6 +15,6 @@ module.exports = {
   // CSS/SCSS files
   '*.{css,scss}': ['prettier --write'],
 
-  // SQL files (migraciones)
-  '*.sql': ['prettier --write'],
+  // SQL files (migraciones) - solo verificación, no prettier
+  '*.sql': [],
 };

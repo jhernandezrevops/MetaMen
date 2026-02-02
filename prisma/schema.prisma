@@ -1,0 +1,362 @@
+// ============================================
+// METAMEN100 - Prisma Schema
+// Sistema Operativo de Conducta TOP 100 Mundial
+// ============================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================
+// ENUMS
+// ============================================
+
+enum AvatarArchetype {
+  rastas
+  muscles
+  pecas
+  grenas
+  rubio
+  lic
+}
+
+enum AvatarStatus {
+  active
+  dead
+  completed
+}
+
+enum SubscriptionPlan {
+  monthly
+  yearly
+}
+
+enum SubscriptionStatus {
+  active
+  cancelled
+  expired
+  past_due
+}
+
+enum PaymentStatus {
+  succeeded
+  failed
+  pending
+  refunded
+}
+
+enum ImageStatus {
+  pending
+  generated
+  failed
+}
+
+enum DayResult {
+  win
+  loss
+}
+
+enum ShopCategory {
+  background
+  clothing
+  accessory
+  effect
+}
+
+// ============================================
+// CORE: USERS & AUTH
+// ============================================
+
+model User {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email           String   @unique @db.VarChar(255)
+  username        String?  @unique @db.VarChar(50)
+  fullName        String?  @map("full_name") @db.VarChar(255)
+  avatarUrl       String?  @map("avatar_url") @db.Text
+  supabaseUserId  String   @unique @map("supabase_user_id") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  lastLoginAt     DateTime? @map("last_login_at") @db.Timestamptz(6)
+
+  // Relations
+  settings        UserSettings?
+  avatars         Avatar[]
+  subscriptions   Subscription[]
+  payments        Payment[]
+  taskCompletions TaskCompletion[]
+  inventoryItems  InventoryItem[]
+  journalEntries  JournalEntry[]
+
+  @@index([email])
+  @@index([username])
+  @@index([supabaseUserId], map: "idx_users_supabase_user_id")
+  @@index([createdAt], map: "idx_users_created_at")
+  @@map("users")
+}
+
+model UserSettings {
+  id                  String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId              String   @unique @map("user_id") @db.Uuid
+  timezone            String   @default("America/Mexico_City") @db.VarChar(50)
+  language            String   @default("es") @db.VarChar(10)
+  theme               String   @default("dark") @db.VarChar(20)
+  pushNotifications   Boolean  @default(true) @map("push_notifications")
+  emailNotifications  Boolean  @default(true) @map("email_notifications")
+  reminderTime        DateTime @default(dbgenerated("'20:00:00'::time without time zone")) @map("reminder_time") @db.Time(6)
+  profileVisibility   String   @default("private") @map("profile_visibility") @db.VarChar(20)
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId], map: "idx_user_settings_user_id")
+  @@map("user_settings")
+}
+
+// ============================================
+// SUBSCRIPTIONS & PAYMENTS
+// ============================================
+
+model Subscription {
+  id                   String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId               String             @map("user_id") @db.Uuid
+  plan                 SubscriptionPlan
+  status               SubscriptionStatus @default(active)
+  startedAt            DateTime           @default(now()) @map("started_at") @db.Timestamptz(6)
+  expiresAt            DateTime           @map("expires_at") @db.Timestamptz(6)
+  cancelledAt          DateTime?          @map("cancelled_at") @db.Timestamptz(6)
+  stripeCustomerId     String?            @map("stripe_customer_id") @db.VarChar(255)
+  stripeSubscriptionId String?            @map("stripe_subscription_id") @db.VarChar(255)
+  stripePriceId        String?            @map("stripe_price_id") @db.VarChar(255)
+  createdAt            DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId], map: "idx_subscriptions_user_id")
+  @@index([status], map: "idx_subscriptions_status")
+  @@index([expiresAt], map: "idx_subscriptions_expires_at")
+  @@index([stripeSubscriptionId], map: "idx_subscriptions_stripe_subscription_id")
+  @@map("subscriptions")
+}
+
+model Payment {
+  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId          String        @map("user_id") @db.Uuid
+  amount          Decimal       @db.Decimal(10, 2)
+  currency        String        @default("USD") @db.VarChar(3)
+  status          PaymentStatus
+  stripePaymentId String?       @map("stripe_payment_id") @db.VarChar(255)
+  stripeInvoiceId String?       @map("stripe_invoice_id") @db.VarChar(255)
+  description     String?       @db.Text
+  metadata        Json?         @db.JsonB
+  createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId], map: "idx_payments_user_id")
+  @@index([status], map: "idx_payments_status")
+  @@index([createdAt], map: "idx_payments_created_at")
+  @@index([stripePaymentId], map: "idx_payments_stripe_payment_id")
+  @@map("payments")
+}
+
+// ============================================
+// AVATARS & TRANSFORMATION
+// ============================================
+
+model Avatar {
+  id              String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId          String         @map("user_id") @db.Uuid
+  name            String?        @db.VarChar(100)
+  archetype       AvatarArchetype
+  currentDay      Int            @default(1) @map("current_day")
+  currentLevel    Int            @default(1) @map("current_level")
+  streakDays      Int            @default(0) @map("streak_days")
+  healthPoints    Int            @default(10) @map("health_points")
+  maxHealthPoints Int            @default(10) @map("max_health_points")
+  status          AvatarStatus   @default(active)
+  createdAt       DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  completedAt     DateTime?      @map("completed_at") @db.Timestamptz(6)
+  diedAt          DateTime?      @map("died_at") @db.Timestamptz(6)
+
+  // Relations
+  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vectors      AvatarVectors?
+  images       AvatarImage[]
+  dailyLogs    DailyLog[]
+
+  @@index([userId], map: "idx_avatars_user_id")
+  @@index([userId, status], map: "idx_avatars_user_status")
+  @@index([status], map: "idx_avatars_status")
+  @@index([createdAt], map: "idx_avatars_created_at")
+  @@map("avatars")
+}
+
+model AvatarVectors {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  avatarId    String   @unique @map("avatar_id") @db.Uuid
+  auraLevel   Decimal  @default(1.00) @map("aura_level") @db.Decimal(4, 2)
+  faceLevel   Decimal  @default(1.00) @map("face_level") @db.Decimal(4, 2)
+  wealthLevel Decimal  @default(1.00) @map("wealth_level") @db.Decimal(4, 2)
+  muscleLevel Decimal  @default(1.00) @map("muscle_level") @db.Decimal(4, 2)
+  fatLevel    Decimal  @default(13.00) @map("fat_level") @db.Decimal(4, 2)
+  envLevel    Int      @default(1) @map("env_level")
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relations
+  avatar Avatar @relation(fields: [avatarId], references: [id], onDelete: Cascade)
+
+  @@index([avatarId], map: "idx_avatar_vectors_avatar_id")
+  @@map("avatar_vectors")
+}
+
+model AvatarImage {
+  id        String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  avatarId  String      @map("avatar_id") @db.Uuid
+  dayNumber Int         @map("day_number")
+  imageUrl  String?     @map("image_url") @db.Text
+  status    ImageStatus @default(pending)
+  prompt    String?     @db.Text
+  createdAt DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  // Relations
+  avatar Avatar @relation(fields: [avatarId], references: [id], onDelete: Cascade)
+
+  @@unique([avatarId, dayNumber], map: "avatar_images_avatar_day_unique")
+  @@index([avatarId], map: "idx_avatar_images_avatar_id")
+  @@index([status], map: "idx_avatar_images_status")
+  @@map("avatar_images")
+}
+
+model DailyLog {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  avatarId   String    @map("avatar_id") @db.Uuid
+  dayNumber  Int       @map("day_number")
+  result     DayResult
+  btcEarned  Decimal   @default(0) @map("btc_earned") @db.Decimal(10, 2)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  // Relations
+  avatar Avatar @relation(fields: [avatarId], references: [id], onDelete: Cascade)
+
+  @@unique([avatarId, dayNumber], map: "daily_logs_avatar_day_unique")
+  @@index([avatarId], map: "idx_daily_logs_avatar_id")
+  @@map("daily_logs")
+}
+
+// ============================================
+// TASKS & GAMIFICATION
+// ============================================
+
+model TaskDefinition {
+  id          String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String            @db.VarChar(255)
+  slug        String            @unique @db.VarChar(100)
+  description String?           @db.Text
+  archetype   AvatarArchetype?
+  btcReward   Decimal           @default(0) @map("btc_reward") @db.Decimal(10, 2)
+  auraImpact  Decimal           @default(0) @map("aura_impact") @db.Decimal(3, 2)
+  faceImpact  Decimal           @default(0) @map("face_impact") @db.Decimal(3, 2)
+  wealthImpact Decimal          @default(0) @map("wealth_impact") @db.Decimal(3, 2)
+  muscleImpact Decimal          @default(0) @map("muscle_impact") @db.Decimal(3, 2)
+  fatImpact   Decimal           @default(0) @map("fat_impact") @db.Decimal(3, 2)
+  isActive    Boolean           @default(true) @map("is_active")
+  createdAt   DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  // Relations
+  completions TaskCompletion[]
+
+  @@index([slug], map: "idx_task_definitions_slug")
+  @@index([archetype], map: "idx_task_definitions_archetype")
+  @@index([isActive], map: "idx_task_definitions_is_active")
+  @@map("task_definitions")
+}
+
+model TaskCompletion {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  taskId      String   @map("task_id") @db.Uuid
+  completedAt DateTime @default(now()) @map("completed_at") @db.Timestamptz(6)
+  btcEarned   Decimal  @default(0) @map("btc_earned") @db.Decimal(10, 2)
+
+  // Relations
+  user User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  task TaskDefinition @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([userId], map: "idx_task_completions_user_id")
+  @@index([taskId], map: "idx_task_completions_task_id")
+  @@index([completedAt], map: "idx_task_completions_completed_at")
+  @@map("task_completions")
+}
+
+// ============================================
+// SHOP & INVENTORY
+// ============================================
+
+model ShopItem {
+  id            String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name          String       @db.VarChar(255)
+  slug          String       @unique @db.VarChar(100)
+  description   String?      @db.Text
+  category      ShopCategory
+  priceBtc      Decimal      @map("price_btc") @db.Decimal(10, 2)
+  requiredLevel Int          @default(1) @map("required_level")
+  aiToken       String?      @map("ai_token") @db.Text
+  imageUrl      String?      @map("image_url") @db.Text
+  isActive      Boolean      @default(true) @map("is_active")
+  createdAt     DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  // Relations
+  inventoryItems InventoryItem[]
+
+  @@index([slug], map: "idx_shop_items_slug")
+  @@index([category], map: "idx_shop_items_category")
+  @@index([isActive], map: "idx_shop_items_is_active")
+  @@map("shop_items")
+}
+
+model InventoryItem {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  shopItemId String   @map("shop_item_id") @db.Uuid
+  isEquipped Boolean  @default(false) @map("is_equipped")
+  acquiredAt DateTime @default(now()) @map("acquired_at") @db.Timestamptz(6)
+
+  // Relations
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  shopItem ShopItem @relation(fields: [shopItemId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, shopItemId], map: "inventory_items_user_shop_item_unique")
+  @@index([userId], map: "idx_inventory_items_user_id")
+  @@index([shopItemId], map: "idx_inventory_items_shop_item_id")
+  @@map("inventory_items")
+}
+
+// ============================================
+// JOURNAL
+// ============================================
+
+model JournalEntry {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  content   String   @db.Text // Encriptado en aplicación
+  entryDate DateTime @map("entry_date") @db.Date
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, entryDate], map: "journal_entries_user_date_unique")
+  @@index([userId], map: "idx_journal_entries_user_id")
+  @@index([entryDate], map: "idx_journal_entries_entry_date")
+  @@map("journal_entries")
+}
