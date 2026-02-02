@@ -1,8 +1,9 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
+  typedRoutes: true,
   experimental: {
-    typedRoutes: true,
+    // otras opciones experimentales si las hubiera
   },
   images: {
     remotePatterns: [
