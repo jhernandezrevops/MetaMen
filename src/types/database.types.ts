@@ -39,6 +39,7 @@ export interface User {
     full_name: string | null;
     avatar_url: string | null;
     supabase_user_id: string;
+    is_admin?: boolean;
     created_at: string;
     updated_at: string;
     last_login_at: string | null;
@@ -272,6 +273,50 @@ export type JournalEntryUpdate = Partial<Omit<JournalEntry, 'id' | 'user_id' | '
 
 export interface Database {
     public: {
+        Functions: {
+            complete_task: {
+                Args: {
+                    p_task_definition_id: string;
+                    p_user_id: string;
+                    p_avatar_id: string;
+                };
+                Returns: Record<string, unknown>;
+            };
+            process_judgement_night: {
+                Args: {
+                    p_avatar_id: string;
+                    p_user_id: string;
+                };
+                Returns: Record<string, unknown>;
+            };
+            purchase_shop_item: {
+                Args: {
+                    p_shop_item_id: string;
+                    p_user_id: string;
+                };
+                Returns: Record<string, unknown>;
+            };
+            toggle_equip_item: {
+                Args: {
+                    p_inventory_item_id: string;
+                    p_user_id: string;
+                };
+                Returns: Record<string, unknown>;
+            };
+            resurrect_avatar: {
+                Args: {
+                    p_avatar_id: string;
+                    p_user_id: string;
+                };
+                Returns: Record<string, unknown>;
+            };
+            get_avatar_stats: {
+                Args: {
+                    p_avatar_id: string;
+                };
+                Returns: Record<string, unknown>;
+            };
+        };
         Tables: {
             users: {
                 Row: User;
